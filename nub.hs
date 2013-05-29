@@ -1,3 +1,5 @@
+module Nub where
+
 nub :: Eq a => [a] -> [a]
 nub [] = []
 nub [x] = [x]

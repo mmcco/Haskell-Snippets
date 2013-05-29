@@ -1,3 +1,5 @@
+-- this is the logic behind Conway's Game of Life
+
 -- takes a grid and the block in question and returns its number of neighbors
 neighCount :: [[Bool]] -> (Int, Int) -> Int
 neighCount grid block = sum (map boolInt [grid !! x !! y | (x, y) <- neighbors])
