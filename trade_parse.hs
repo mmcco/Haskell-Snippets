@@ -1,3 +1,5 @@
+-- This script takes a Mt. Gox JSON feed of trade data, parses it, and stores it in a SQLite3 table
+-- The "price" and "amount" fields of the Trade datatype aren't used; I should look into removing them
 {-# LANGUAGE OverloadedStrings #-}
 
 import Data.Aeson ((.:), (.:?), decode, FromJSON(..), Value(..))
@@ -60,4 +62,7 @@ main = do
    let myData = decode contents :: Maybe Data
        myTrades = process myData
    conn <- connectSqlite3 "trades.db"
+   insert <- DB.prepare conn "INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
+   DB.executeMany insert $ map (\xs -> map DB.toSql xs) myTrades
+   DB.commit conn
    DB.disconnect conn
