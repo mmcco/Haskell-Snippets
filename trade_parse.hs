@@ -24,23 +24,23 @@ data Trade = Trade {
 instance FromJSON Data where
    parseJSON (Object v) = 
       Data <$>
-      (v .: "result")    <*>
+      (v .: "result")  <*>
       (v .: "return")
 
 -- logic for the Aeson parser of the trade data
 instance FromJSON Trade where
    parseJSON (Object v) = 
       Trade <$>
-      (v .: "date")    <*>
-      (v .: "price")    <*>
-      (v .: "amount")    <*>
-      (v .: "price_int")    <*>
-      (v .: "amount_int")    <*>
-      (v .: "tid")    <*>
-      (v .: "price_currency")    <*>
-      (v .: "item")    <*>
-      (v .: "trade_type")    <*>
-      (v .: "primary")    <*>
+      (v .: "date")             <*>
+      (v .: "price")            <*>
+      (v .: "amount")           <*>
+      (v .: "price_int")        <*>
+      (v .: "amount_int")       <*>
+      (v .: "tid")              <*>
+      (v .: "price_currency")   <*>
+      (v .: "item")             <*>
+      (v .: "trade_type")       <*>
+      (v .: "primary")          <*>
       (v .: "properties")
    
 -- stores the initial JSON data received
@@ -50,12 +50,14 @@ data Data = Data {
 } deriving (Show)
 
 -- takes a list of trades and returns a list of lists that can be used as parameters in a SQL statement
-process :: Maybe Data -> [Trade]
+process :: Maybe Data -> [[String]]
 process Nothing = []
-process (Just x) = map [a, b, c, d, e, f, g, h, i]
+process (Just x) = map (\(Trade a b c d e f g h i j k) -> [(show a), d, e, f, g, h, i, j, k]) myTrades -- skips price and amount because they are large and redundant
    where myTrades = trades x
 
 main = do
    contents <- BL.getContents
    let myData = decode contents :: Maybe Data
        myTrades = process myData
+   conn <- connectSqlite3 "trades.db"
+   DB.disconnect conn
