@@ -1,5 +1,6 @@
 -- This script takes a Mt. Gox JSON feed of trade data, parses it, and stores it in a SQLite3 table
 -- The "price" and "amount" fields of the Trade datatype aren't used; I should look into removing them
+-- Current create table statement: CREATE TABLE trades (date INTEGER, price_int INTEGER, amount_int INTEGER, tid INTEGER UNIQUE NOT NULL, price_currency TEXT, item TEXT, trade_type TEXT, is_primary TEXT, properties TEXT, PRIMARY KEY(tid ASC));
 {-# LANGUAGE OverloadedStrings #-}
 
 import Data.Aeson ((.:), (.:?), decode, FromJSON(..), Value(..))
