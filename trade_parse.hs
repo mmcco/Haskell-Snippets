@@ -1,5 +1,6 @@
 -- This script takes a Mt. Gox JSON feed of trade data, parses it, and stores it in a SQLite3 table
 -- The "price" and "amount" fields of the Trade datatype aren't used; I should look into removing them
+-- The next step is to use the download module and write a loop that calls this recursively as long as there is still new data
 -- Current create table statement: CREATE TABLE trades (date INTEGER, price_int INTEGER, amount_int INTEGER, tid INTEGER UNIQUE NOT NULL, price_currency TEXT, item TEXT, trade_type TEXT, is_primary TEXT, properties TEXT, PRIMARY KEY(tid ASC));
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -58,12 +59,19 @@ process Nothing = []
 process (Just x) = map (\(Trade a b c d e f g h i j k) -> [(show a), d, e, f, g, h, i, j, k]) myTrades -- skips price and amount because they are large and redundant
    where myTrades = trades x
 
+--helper function, checks if a JSON query succeeded
+succeeded :: Maybe Data -> Bool
+succeeded (Just a) = result a == "success"
+succeeded Nothing = False
+
 main = do
    contents <- BL.getContents
    let myData = decode contents :: Maybe Data
-       myTrades = process myData
-   conn <- connectSqlite3 "trades.db"
-   insert <- DB.prepare conn "INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
-   DB.executeMany insert $ map (\xs -> map DB.toSql xs) myTrades
-   DB.commit conn
-   DB.disconnect conn
+   if maybe True (\x -> result x /= "success") myData
+      then error ("JSON download failed")
+      else let myTrades = process myData
+         conn <- connectSqlite3 "trades.db"
+         insert <- DB.prepare conn "INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
+         DB.executeMany insert $ map (\xs -> map DB.toSql xs) myTrades
+         DB.commit conn
+         DB.disconnect conn
