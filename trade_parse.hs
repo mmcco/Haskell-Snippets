@@ -69,9 +69,9 @@ main = do
    let myData = decode contents :: Maybe Data
    if maybe True (\x -> result x /= "success") myData
       then error ("JSON download failed")
-      else let myTrades = process myData
-         conn <- connectSqlite3 "trades.db"
-         insert <- DB.prepare conn "INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
-         DB.executeMany insert $ map (\xs -> map DB.toSql xs) myTrades
-         DB.commit conn
-         DB.disconnect conn
+      else do let myTrades = process myData
+              conn <- connectSqlite3 "trades.db"
+              insert <- DB.prepare conn "INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
+              DB.executeMany insert $ map (\xs -> map DB.toSql xs) myTrades
+              DB.commit conn
+              DB.disconnect conn
