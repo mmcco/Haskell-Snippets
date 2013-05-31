@@ -11,6 +11,7 @@ import Control.Applicative ((<$>), (<*>))
 import Database.HDBC.Sqlite3 (connectSqlite3)
 import qualified Database.HDBC as DB
 
+-- stores a trade's data
 data Trade = Trade {
    date :: Int,
    price :: String,
@@ -61,8 +62,8 @@ process (Just x) = map (\(Trade a b c d e f g h i j k) -> [(show a), d, e, f, g,
    where myTrades = trades x
 
 main = do
---   contents <- BL.Char8.getContents
-   contents <- DL.openURI "https://data.mtgox.com/api/1/BTCUSD/trades?since=0" -- download the JSON data
+--   contents <- BL.Char8.getContents -- this line uses input file from stdin as contents, used for testing
+   contents <- DL.openURI "http://data.mtgox.com/api/1/BTCUSD/trades?since=0" -- download the JSON data
    let lazyContents = either (\a -> error $ "bad URI passed to Network.Download.openURI: " ++ a) (\b -> BL.fromStrict b) contents
    let myData = decode lazyContents :: Maybe Data -- parse the JSON data
    if maybe True (\x -> result x /= "success") myData -- if the JSON query failed on their side...
