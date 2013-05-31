@@ -1,7 +1,7 @@
 -- This script takes a Mt. Gox JSON feed of trade data, parses it, and stores it in a SQLite3 table
 -- The "price" and "amount" fields of the Trade datatype aren't used; I should look into removing them
 -- The next step is to use the download module and write a loop that calls this recursively as long as there is still new data
--- Current create table statement: CREATE TABL.Char8E trades (date INTEGER, price_int INTEGER, amount_int INTEGER, tid INTEGER UNIQUE NOT NULL, price_currency TEXT, item TEXT, trade_type TEXT, is_primary TEXT, properties TEXT, PRIMARY KEY(tid ASC));
+-- Current create table statement: CREATE TABLE trades (date INTEGER, price_int INTEGER, amount_int INTEGER, tid INTEGER UNIQUE NOT NULL, price_currency TEXT, item TEXT, trade_type TEXT, is_primary TEXT, properties TEXT, PRIMARY KEY(tid ASC));
 {-# LANGUAGE OverloadedStrings #-}
 
 import Data.Aeson ((.:), (.:?), decode, FromJSON(..), Value(..))
