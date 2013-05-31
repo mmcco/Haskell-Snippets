@@ -60,11 +60,6 @@ process Nothing = []
 process (Just x) = map (\(Trade a b c d e f g h i j k) -> [(show a), d, e, f, g, h, i, j, k]) myTrades -- skips price and amount because they are large and redundant
    where myTrades = trades x
 
---helper function, checks if a JSON query succeeded
-succeeded :: Maybe Data -> Bool
-succeeded (Just a) = result a == "success"
-succeeded Nothing = False
-
 main = do
 --   contents <- BL.Char8.getContents
    contents <- DL.openURI "https://data.mtgox.com/api/1/BTCUSD/trades?since=0" -- download the JSON data
