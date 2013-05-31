@@ -1,11 +1,12 @@
 -- This script takes a Mt. Gox JSON feed of trade data, parses it, and stores it in a SQLite3 table
 -- The "price" and "amount" fields of the Trade datatype aren't used; I should look into removing them
 -- The next step is to use the download module and write a loop that calls this recursively as long as there is still new data
--- Current create table statement: CREATE TABLE trades (date INTEGER, price_int INTEGER, amount_int INTEGER, tid INTEGER UNIQUE NOT NULL, price_currency TEXT, item TEXT, trade_type TEXT, is_primary TEXT, properties TEXT, PRIMARY KEY(tid ASC));
+-- Current create table statement: CREATE TABL.Char8E trades (date INTEGER, price_int INTEGER, amount_int INTEGER, tid INTEGER UNIQUE NOT NULL, price_currency TEXT, item TEXT, trade_type TEXT, is_primary TEXT, properties TEXT, PRIMARY KEY(tid ASC));
 {-# LANGUAGE OverloadedStrings #-}
 
 import Data.Aeson ((.:), (.:?), decode, FromJSON(..), Value(..))
-import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Network.Download as DL
+import qualified Data.ByteString.Lazy as BL
 import Control.Applicative ((<$>), (<*>))
 import Database.HDBC.Sqlite3 (connectSqlite3)
 import qualified Database.HDBC as DB
@@ -65,11 +66,14 @@ succeeded (Just a) = result a == "success"
 succeeded Nothing = False
 
 main = do
-   contents <- BL.getContents
-   let myData = decode contents :: Maybe Data
-   if maybe True (\x -> result x /= "success") myData
-      then error ("JSON download failed")
-      else do let myTrades = process myData
+--   contents <- BL.Char8.getContents
+   contents <- DL.openURI "https://data.mtgox.com/api/1/BTCUSD/trades?since=0" -- download the JSON data
+   let lazyContents = either (\a -> error $ "bad URI passed to Network.Download.openURI: " ++ a) (\b -> BL.fromStrict b) contents
+   let myData = decode lazyContents :: Maybe Data -- parse the JSON data
+   if maybe True (\x -> result x /= "success") myData -- if the JSON query failed on their side...
+      then error ("JSON download failed") -- throw an error
+      else do let myTrades = process myData -- otherwise, parse the trades
+              -- insert trades to database
               conn <- connectSqlite3 "trades.db"
               insert <- DB.prepare conn "INSERT INTO trades VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
               DB.executeMany insert $ map (\xs -> map DB.toSql xs) myTrades
