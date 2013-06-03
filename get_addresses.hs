@@ -11,9 +11,9 @@ getAddresses x = List.nub .
                  drop 3 .
                  lines $ x
 
-shortLines :: String -> [(Int, [String])]
-shortLines x = filter (\x -> (<) (length (snd x)) 3) .
-               (\xs -> zip [1..length xs] (map words xs)) .
+shortLines :: String -> [(Int, String)]
+shortLines x = filter (\x -> (<) (length $ words $ snd x) 3) .
+               zip [1..] .
                lines $ x
 
 main = do
