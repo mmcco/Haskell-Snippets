@@ -16,9 +16,13 @@ data SNP = SNP { rsid :: String
 -- initial parsing function
 populate :: String -> [SNP]
 populate str = map (\[a, b, c, d] -> SNP a b c d) $ process str
-   where process str = map words . filter (\x -> head x /= '#') . filter (\x -> not $ null x) . lines $ str
+   where process = map words .
+                       filter (\x -> head x /= '#') .
+                       filter (\x -> not $ null x)
+                       . lines
 
 -- returns the percentage of SNPs that are of the supplied genotype
 percentage :: [SNP] -> String -> Double
-percentage xs pattern = (fromIntegral . length . filter (\x -> genotype x == pattern) $ xs) / (fromIntegral . length $ xs)
+percentage xs pattern = (fromIntegral . length . filter (\x -> genotype x == pattern) $ xs)
+                        / (fromIntegral . length $ xs)
                         * 100

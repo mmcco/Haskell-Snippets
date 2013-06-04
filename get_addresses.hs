@@ -3,18 +3,18 @@
 import qualified Data.List as List
 
 getAddresses :: String -> [String]
-getAddresses x = List.nub .
+getAddresses = List.nub .
                  filter ((/=) "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX") .
                  map (flip (!!) 2) .
                  filter (\x -> (>=) (length x) 3) .
                  map words .
                  drop 3 .
-                 lines $ x
+                 lines
 
 shortLines :: String -> [(Int, String)]
-shortLines x = filter (\x -> (<) (length $ words $ snd x) 3) .
+shortLines = filter (\x -> (<) (length $ words $ snd x) 3) .
                zip [1..] .
-               lines $ x
+               lines
 
 main = do
    transactions <- getContents
