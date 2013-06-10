@@ -4,7 +4,7 @@
 neighCount :: [[Bool]] -> (Int, Int) -> Int
 neighCount grid block = sum (map boolInt [grid !! x !! y | (x, y) <- neighbors])
     where cols = length grid
-          rows = length (grid !! 0)
+          rows = length (head grid)
           neighbors = neighList block (cols, rows)
           
           boolInt :: Bool -> Int

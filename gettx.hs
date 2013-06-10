@@ -1,3 +1,4 @@
+-- remember to filter blocks based on version
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Aeson
 import qualified System.Process as Process
@@ -6,27 +7,28 @@ import Control.Applicative ((<$>), (<*>))
 import Control.Monad (mzero)
 
 data Block = Block {
-    blockHash :: String,
-    -- must make this a list of strings
-    txs :: String,
-    prevHash :: String
-}
-
-data Tx = Tx {
-    txHash :: String
-}
+    blockHash :: BL.ByteString,
+    txs :: [BL.ByteString],
+    prevHash :: BL.ByteString
+} deriving (Show)
 
 instance FromJSON Block where
     parseJSON (Object v) =
         Block <$>
         (v .: "hash") <*>
-        (v .: "transactions") <*>
+        (v .: "tx") <*>
         (v .: "previousblockhash")
---    parseJSON _ = mzero
+    parseJSON _ = mzero
+
+getBlocks :: IO BL.ByteString -> IO [Maybe Block]
+getBlocks hash = (:) <$> block <*> (getBlocks $ lastHash block)
+    where block = decode . BL.pack <$> Process.readProcess "bitcoind" ["getblock", BL.unpack hash] []
+--          lastHash = maybe "" prevHash
+
+lastHash :: IO (Maybe Block) -> IO BL.ByteString
+lastHash = maybe "" prevHash
 
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
     firstHash <- Process.readProcess "bitcoind" ["getblockhash", chainHeight] []
-    blockInfo <- Process.readProcess "bitcoind" ["getblock", firstHash] []
-    let jsonData = decode $ BL.pack blockInfo :: Maybe Block
     print "compiled"
