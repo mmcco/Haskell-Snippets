@@ -1,17 +1,32 @@
--- I am first writing a script that will generate a list of all of the blocks in the current chain
+{-# LANGUAGE OverloadedStrings #-}
+import Data.Aeson
 import qualified System.Process as Process
-import qualified Text.JSON as JSON
+import qualified Data.ByteString.Lazy.Char8 as BL
+import Control.Applicative ((<$>), (<*>))
+import Control.Monad (mzero)
 
 data Block = Block {
-    hash :: String
-    lastHash :: String
+    blockHash :: String,
+    -- must make this a list of strings
+    txs :: String,
+    prevHash :: String
 }
 
-getBlock :: String -> Maybe Block
-getBlock = maybe (error "Shell call to bitcoind failed") (\(Just a) -> JSON.decode a)
-    where sysResponse = Process.readProcess "bitcoind" ["getblockhash", hash]
+data Tx = Tx {
+    txHash :: String
+}
 
-txLoop :: Maybe String -> [String]
-txLoop (Ok ) = block : (txLoop lastHash)
-txLoop (Error a) = error a
-    where lastHash = 
+instance FromJSON Block where
+    parseJSON (Object v) =
+        Block <$>
+        (v .: "hash") <*>
+        (v .: "transactions") <*>
+        (v .: "previousblockhash")
+--    parseJSON _ = mzero
+
+main = do
+    chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
+    firstHash <- Process.readProcess "bitcoind" ["getblockhash", chainHeight] []
+    blockInfo <- Process.readProcess "bitcoind" ["getblock", firstHash] []
+    let jsonData = decode $ BL.pack blockInfo :: Maybe Block
+    print "compiled"
