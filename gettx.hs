@@ -1,42 +1,17 @@
-{-# LANGUAGE OverloadedStrings #-}
-
+-- I am first writing a script that will generate a list of all of the blocks in the current chain
 import qualified System.Process as Process
-import Control.Monad
-import Data.Aeson ((.:), (.:?), decode, FromJSON(..), Value(..))
-import Control.Applicative ((<$>), (<*>))
-import qualified Data.ByteString.Lazy as B
-import qualified Data.ByteString.Lazy.Char8 as Char8
-
--- helper function, removes n items from the end of the supplied list
-chop :: Int -> [a] -> [a]
-chop n xs = zipWith const xs (drop n xs)
+import qualified Text.JSON as JSON
 
 data Block = Block {
-    tx :: [B.ByteString],
-    previousblockhash :: B.ByteString
-} deriving (Show)
+    hash :: String
+    lastHash :: String
+}
 
-data Tx = Tx {
-    id :: B.ByteString
-} deriving (Show)
+getBlock :: String -> Maybe Block
+getBlock = maybe (error "Shell call to bitcoind failed") (\(Just a) -> JSON.decode a)
+    where sysResponse = Process.readProcess "bitcoind" ["getblockhash", hash]
 
-instance FromJSON Block where
-    parseJSON (Object v) =
-        Block <$>
-        (v .: "tx") <*>
-        (v .: "previousblockhash")
-{-
-main = do
-    blockCount <- Process.readProcess "bitcoind" ["getblockcount"] []
-    firstBlock <- Process.readProcess "bitcoind" ["getblockhash", blockCount] []
-    --let getBlocks lst:blocks = (getBlocks $ previousblockhash JSON lst):lst:blocks
-    useJSON (Just a) <- print . init . previousblockhash a
-    useJSON Nothing <- print "error parsing block"
-    getJSON block <- useJSON $ decode (Process.readProcess "bitcoind" ["getblock", block])
-    print firstBlock
-    getJSON firstBlock
--}
-main = do
-    blockCount <- Process.readProcess "bitcoind" ["getblockcount"] []
-    firstBlock <- init $ Process.readProcess "bitcoind" ["getblockhash", blockCount] []
-
+txLoop :: Maybe String -> [String]
+txLoop (Ok ) = block : (txLoop lastHash)
+txLoop (Error a) = error a
+    where lastHash = 
