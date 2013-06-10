@@ -3,8 +3,7 @@
 import qualified Data.List as List
 
 getAddresses :: String -> [String]
-getAddresses = List.nub .
-                 filter ((/=) "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX") .
+getAddresses = filter ((/=) "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX") .
                  map (flip (!!) 2) .
                  filter (\x -> (>=) (length x) 3) .
                  map words .
