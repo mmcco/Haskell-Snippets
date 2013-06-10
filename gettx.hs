@@ -21,7 +21,7 @@ instance FromJSON Block where
     parseJSON _ = mzero
 
 getBlocks :: IO BL.ByteString -> IO [Maybe Block]
-getBlocks hash = (:) <$> block <*> (getBlocks $ lastHash block)
+getBlocks hash = (:) <$> block <*> getBlocks (lastHash block)
     where block = decode . BL.pack <$> Process.readProcess "bitcoind" ["getblock", BL.unpack hash] []
 --          lastHash = maybe "" prevHash
 
