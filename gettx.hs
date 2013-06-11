@@ -32,13 +32,17 @@ getBlock hash = do
                     let hashString = BL.toString hash
                     decode . BL.fromString <$> Process.readProcess "bitcoind" ["getblock", hashString] []
 
-getTxs :: [Block] -> [BL.ByteString]
-getTxs blocks = foldl1 (++) . map txs $ blocks
+getTxs :: [Block] -> [String]
+getTxs blocks = --map (\tx -> Process.readProcess (BL.fromString "bitcoind") [(BL.fromString "getrawtransaction"), tx, (BL.fromString "1")] []) . 
+                map BL.toString .
+                foldl1 (++) .
+                map txs $ blocks
 
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
-    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "1000"] []
     -- using low blockheight to make testing faster
+    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "50"] []
     firstBlock <- getBlock . BL.fromString $ firstHash
     blocks <- blockLoop firstBlock
-    print blocks
+    let txs = getTxs blocks
+    print txs
