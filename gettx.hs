@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Aeson
 import qualified System.Process as Process
-import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.ByteString.Lazy.UTF8 as BL
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad (mzero)
 
@@ -20,15 +20,25 @@ instance FromJSON Block where
         (v .: "previousblockhash")
     parseJSON _ = mzero
 
-getBlocks :: IO BL.ByteString -> IO [Maybe Block]
-getBlocks hash = (:) <$> block <*> getBlocks (lastHash block)
-    where block = decode . BL.pack <$> Process.readProcess "bitcoind" ["getblock", BL.unpack hash] []
---          lastHash = maybe "" prevHash
+blockLoop :: Maybe Block -> IO [Block]
+blockLoop Nothing = return []
+blockLoop (Just block) = do
+    lastBlock <- getBlock $ prevHash block
+    rest <- blockLoop lastBlock
+    return (block : rest)
 
-lastHash :: IO (Maybe Block) -> IO BL.ByteString
-lastHash = maybe "" prevHash
+getBlock :: BL.ByteString -> IO (Maybe Block)
+getBlock hash = do
+                    let hashString = BL.toString hash
+                    decode . BL.fromString <$> Process.readProcess "bitcoind" ["getblock", hashString] []
+
+getTxs :: [Block] -> [BL.ByteString]
+getTxs blocks = foldl1 (++) . map txs $ blocks
 
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
-    firstHash <- Process.readProcess "bitcoind" ["getblockhash", chainHeight] []
-    print "compiled"
+    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "1000"] []
+    -- using low blockheight to make testing faster
+    firstBlock <- getBlock . BL.fromString $ firstHash
+    blocks <- blockLoop firstBlock
+    print blocks
