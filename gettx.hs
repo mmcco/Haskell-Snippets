@@ -1,4 +1,4 @@
--- create table statement for txs: CREATE TABLE txs (txHash INTEGER UNIQUE NOT NULL, time INTEGER, inputs TEXT NOT NULL);
+-- create table statement for txs: CREATE TABLE txs (txHash INTEGER UNIQUE NOT NULL, time INTEGER, inputs TEXT NOT NULL, PRIMARY KEY(txHash));
 -- create table statement for outputs: CREATE TABLE outputs (txHASH TEXT NOT NULL, callNum INTEGER NOT NULL, addresses TEXT NOT NULL);
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Aeson
@@ -100,14 +100,14 @@ main = do
     firstHash <- Process.readProcess "bitcoind" ["getblockhash", "5"] []
     firstBlock <- getBlock . BL.fromString $ firstHash
     blocks <- blockLoop firstBlock
-    print ("blocks length: " ++ (show . length $ blocks))
+    --print ("blocks length: " ++ (show . length $ blocks))
     txs <- getTxs blocks
-    print . take 50 $ txs
-    print $ "length txs: " ++ (show . length $ txs)
+    --print . take 50 $ txs
+    --print $ "length txs: " ++ (show . length $ txs)
     -- generate a two-dimensional list of values to supply to the database insert
-    --let values = map (map DB.toSql . (\x -> [txHash x, BL.fromString . show . time $ x])) txs
-    --conn <- connectSqlite3 "txs.db"
-    --txInsert <- DB.prepare conn "INSERT INTO txs VALUES (?, ?);"
-    --DB.executeMany txInsert values
-    --DB.commit conn
-    --DB.disconnect conn
+    let values = map (map DB.toSql . (\x -> [txHash x, BL.fromString . show . time $ x])) txs
+    conn <- connectSqlite3 "txs.db"
+    txInsert <- DB.prepare conn "INSERT INTO txs VALUES (?, ?);"
+    DB.executeMany txInsert values
+    DB.commit conn
+    DB.disconnect conn
