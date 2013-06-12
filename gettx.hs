@@ -31,8 +31,8 @@ data Input = Input {
 
 data Output = Output {
     value :: Double,
-    callNum :: Int--,
-    --addresses :: BL.ByteString
+    callNum :: Int,
+    addresses :: [BL.ByteString]
 } deriving (Show)
 
 
@@ -65,8 +65,8 @@ instance FromJSON Output where
     parseJSON (Object v) =
         Output <$>
         (v .: "value") <*>
-        (v .: "n") -- <*>
-       -- (v .: "scriptPubKey") -- >>= (.: "addresses"))
+        (v .: "n") <*>
+        (v .: "scriptPubKey" >>= (.: "addresses"))
     parseJSON _ = mzero
 
 -- generates a list of all blocks before (and including) the supplied block
