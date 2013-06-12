@@ -1,3 +1,4 @@
+-- a problem with parsing inputs and outputs is preventing transactions from being parsed
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Aeson
 import qualified System.Process as Process
@@ -20,16 +21,18 @@ data Tx = Tx {
     time    :: Int
 } deriving (Show)
 
+-- the first tx in every block is a miner reward, and therefore has
+-- a coinbase but no inputHash or outputCall
 data Input = Input {
-    inputHash  :: BL.ByteString,
-    outputCall :: Int
+    coinbase   :: Maybe BL.ByteString,
+    inputHash  :: Maybe BL.ByteString,
+    outputCall :: Maybe Int
 } deriving (Show)
 
-
 data Output = Output {
-    callNum :: Int,
-    value   :: Double,
-    addresses :: [BL.ByteString]
+    value :: Double,
+    callNum :: Int--,
+    --addresses :: BL.ByteString
 } deriving (Show)
 
 
@@ -53,16 +56,17 @@ instance FromJSON Tx where
 instance FromJSON Input where
     parseJSON (Object v) =
         Input <$>
-        (v .: "txid") <*>
-        (v .: "vout")
+        (v .:? "coinbase") <*>
+        (v .:? "txid") <*>
+        (v .:? "vout")
     parseJSON _ = mzero
 
 instance FromJSON Output where
     parseJSON (Object v) =
         Output <$>
-        (v .: "txid") <*>
         (v .: "value") <*>
-        (v .: "scriptPubKey" >>= (.: "addresses"))
+        (v .: "n") -- <*>
+       -- (v .: "scriptPubKey") -- >>= (.: "addresses"))
     parseJSON _ = mzero
 
 -- generates a list of all blocks before (and including) the supplied block
@@ -78,26 +82,13 @@ getBlock :: BL.ByteString -> IO (Maybe Block)
 getBlock hash = do
                     let hashString = BL.toString hash
                     decode . BL.fromString <$> Process.readProcess "bitcoind" ["getblock", hashString] []
-{-
-getTxs :: [Block] -> IO [BL.ByteString]
-getTxs [] = return []
-getTxs blocks = do
-                    txData  <- txCommand . map BL.toString . txs . head $ blocks
-                    rest <- getTxs $ tail blocks
-                    return (txData ++ rest)
-    where txCommand [] = return []
-          txCommand txs = do
-                              response <- BL.fromString <$> Process.readProcess "bitcoind" ["getrawtransaction", head txs, "1"] []
-                              rest <- txCommand $ tail txs
-                              return (response : rest)
--}
 
--- generates a list of all transactions included in a given block
 getTxs :: [Block] -> IO [Tx]
-getTxs = txLoop . foldl1 (++) . map txs
+getTxs = txLoop . foldl1 (++) . map txs -- generate a list of all the blocks' txs and apply txLoop to it
     where txLoop [] = return []
           txLoop (first:others) = do
                                       txData <- Process.readProcess "bitcoind" ["getrawtransaction", BL.toString first, "1"] []
+                                      print $ txData
                                       let maybeTx = decode . BL.fromString $ txData
                                       let tx = maybe [] (\x -> [x]) maybeTx
                                       rest <- txLoop others
@@ -106,14 +97,17 @@ getTxs = txLoop . foldl1 (++) . map txs
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
     -- using low blockheight to make testing faster
-    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "50"] []
+    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "5"] []
     firstBlock <- getBlock . BL.fromString $ firstHash
     blocks <- blockLoop firstBlock
+    print ("blocks length: " ++ (show . length $ blocks))
     txs <- getTxs blocks
+    print . take 50 $ txs
+    print $ "length txs: " ++ (show . length $ txs)
     -- generate a two-dimensional list of values to supply to the database insert
-    let values = map (map DB.toSql . (\x -> [txHash x, BL.fromString . show . time $ x])) txs
-    conn <- connectSqlite3 "txs.db"
-    txInsert <- DB.prepare conn "INSERT INTO txs VALUES (?, ?);"
-    DB.executeMany txInsert values
-    DB.commit conn
-    DB.disconnect conn
+    --let values = map (map DB.toSql . (\x -> [txHash x, BL.fromString . show . time $ x])) txs
+    --conn <- connectSqlite3 "txs.db"
+    --txInsert <- DB.prepare conn "INSERT INTO txs VALUES (?, ?);"
+    --DB.executeMany txInsert values
+    --DB.commit conn
+    --DB.disconnect conn
