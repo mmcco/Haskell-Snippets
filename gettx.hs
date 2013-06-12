@@ -1,4 +1,3 @@
--- remember to filter blocks based on version
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Aeson
 import qualified System.Process as Process
@@ -66,6 +65,7 @@ instance FromJSON Output where
         (v .: "scriptPubKey" >>= (.: "addresses"))
     parseJSON _ = mzero
 
+-- generates a list of all blocks before (and including) the supplied block
 blockLoop :: Maybe Block -> IO [Block]
 blockLoop Nothing = return []
 blockLoop (Just block) = do
@@ -73,6 +73,7 @@ blockLoop (Just block) = do
     rest <- blockLoop lastBlock
     return (block : rest)
 
+-- gets the block associated with the supplied hash using bitcoind
 getBlock :: BL.ByteString -> IO (Maybe Block)
 getBlock hash = do
                     let hashString = BL.toString hash
@@ -90,13 +91,15 @@ getTxs blocks = do
                               rest <- txCommand $ tail txs
                               return (response : rest)
 -}
+
+-- generates a list of all transactions included in a given block
 getTxs :: [Block] -> IO [Tx]
 getTxs = txLoop . foldl1 (++) . map txs
     where txLoop [] = return []
           txLoop (first:others) = do
                                       txData <- Process.readProcess "bitcoind" ["getrawtransaction", BL.toString first, "1"] []
                                       let maybeTx = decode . BL.fromString $ txData
-                                      let tx = maybe [] (\x -> (:) x []) maybeTx
+                                      let tx = maybe [] (\x -> [x]) maybeTx
                                       rest <- txLoop others
                                       return (tx ++ rest)
 
@@ -107,9 +110,10 @@ main = do
     firstBlock <- getBlock . BL.fromString $ firstHash
     blocks <- blockLoop firstBlock
     txs <- getTxs blocks
-    let values = map (map DB.toSql) . map (\x -> [(txHash x), (BL.fromString . show . time $ x)]) $ txs
+    -- generate a two-dimensional list of values to supply to the database insert
+    let values = map (map DB.toSql . (\x -> [txHash x, BL.fromString . show . time $ x])) txs
     conn <- connectSqlite3 "txs.db"
-    txInsert <- DB.prepare conn "INSERT INTO txs VALUES ();"
+    txInsert <- DB.prepare conn "INSERT INTO txs VALUES (?, ?);"
     DB.executeMany txInsert values
     DB.commit conn
     DB.disconnect conn
