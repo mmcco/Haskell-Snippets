@@ -1,4 +1,5 @@
--- a problem with parsing inputs and outputs is preventing transactions from being parsed
+-- create table statement for txs: CREATE TABLE txs (txHash INTEGER UNIQUE NOT NULL, time INTEGER, inputs TEXT NOT NULL);
+-- create table statement for outputs: CREATE TABLE outputs (txHASH TEXT NOT NULL, callNum INTEGER NOT NULL, addresses TEXT NOT NULL);
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Aeson
 import qualified System.Process as Process
@@ -88,7 +89,6 @@ getTxs = txLoop . foldl1 (++) . map txs -- generate a list of all the blocks' tx
     where txLoop [] = return []
           txLoop (first:others) = do
                                       txData <- Process.readProcess "bitcoind" ["getrawtransaction", BL.toString first, "1"] []
-                                      print $ txData
                                       let maybeTx = decode . BL.fromString $ txData
                                       let tx = maybe [] (\x -> [x]) maybeTx
                                       rest <- txLoop others
