@@ -1,4 +1,4 @@
--- create table statement for txs: CREATE TABLE txs (txHash INTEGER UNIQUE NOT NULL, time INTEGER, inputs TEXT NOT NULL, PRIMARY KEY(txHash));
+-- create table statement for txs: CREATE TABLE txs (txHash TEXT UNIQUE NOT NULL, time INTEGER, coinbase TEXT, inputs TEXT, outputcalls TEXT, PRIMARY KEY(txHash));
 -- create table statement for outputs: CREATE TABLE outputs (txHASH TEXT NOT NULL, callNum INTEGER NOT NULL, addresses TEXT NOT NULL);
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Aeson
@@ -8,15 +8,18 @@ import Control.Applicative ((<$>), (<*>))
 import Control.Monad (mzero)
 import qualified Database.HDBC as DB
 import Database.HDBC.Sqlite3 (connectSqlite3)
+import Data.ByteString.Lazy (intercalate)
+
+type BS = BL.ByteString
 
 data Block = Block {
-    blockHash :: BL.ByteString,
-    txs :: [BL.ByteString],
-    prevHash :: BL.ByteString
+    blockHash :: BS,
+    txs :: [BS],
+    prevHash :: BS
 } deriving (Show)
 
 data Tx = Tx {
-    txHash  :: BL.ByteString,
+    txHash  :: BS,
     inputs  :: [Input],
     outputs :: [Output],
     time    :: Int
@@ -25,15 +28,15 @@ data Tx = Tx {
 -- the first tx in every block is a miner reward, and therefore has
 -- a coinbase but no inputHash or outputCall
 data Input = Input {
-    coinbase   :: Maybe BL.ByteString,
-    inputHash  :: Maybe BL.ByteString,
+    coinbase   :: Maybe BS,
+    inputHash  :: Maybe BS,
     outputCall :: Maybe Int
 } deriving (Show)
 
 data Output = Output {
     value :: Double,
     callNum :: Int,
-    addresses :: [BL.ByteString]
+    addresses :: [BS]
 } deriving (Show)
 
 
@@ -79,7 +82,7 @@ blockLoop (Just block) = do
     return (block : rest)
 
 -- gets the block associated with the supplied hash using bitcoind
-getBlock :: BL.ByteString -> IO (Maybe Block)
+getBlock :: BS -> IO (Maybe Block)
 getBlock hash = do
                     let hashString = BL.toString hash
                     decode . BL.fromString <$> Process.readProcess "bitcoind" ["getblock", hashString] []
@@ -94,20 +97,35 @@ getTxs = txLoop . foldl1 (++) . map txs -- generate a list of all the blocks' tx
                                       rest <- txLoop others
                                       return (tx ++ rest)
 
+-- helper function, concisely converts any showable type into a ByteString
+byteString :: Show a => a -> BS
+byteString = BL.fromString . show
+
+-- takes a tx and returns a list of values for an insert
+getInsertVals :: Tx -> [BS] --(BS, Int, BS, BS, BS)
+getInsertVals tx = [hash, txTime, txCoinbase, inputHashes, outputCalls]
+    where hash        = txHash tx
+          txTime      = byteString . time $ tx
+          txCoinbase  = maybe "" id . coinbase . head . inputs $ tx
+          inputHashes = intercalate "|" . map (maybe "" id) . map inputHash . inputs $ tx
+          outputCalls = intercalate "|" . map (maybe "" byteString) . map outputCall . inputs $ tx
+
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
     -- using low blockheight to make testing faster
-    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "5"] []
+    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "2000"] []
     firstBlock <- getBlock . BL.fromString $ firstHash
     blocks <- blockLoop firstBlock
     --print ("blocks length: " ++ (show . length $ blocks))
     txs <- getTxs blocks
+    --print . getInsertVals . last $ txs
+    --map print . map (intercalate "|") . inputs $ txs
     --print . take 50 $ txs
     --print $ "length txs: " ++ (show . length $ txs)
     -- generate a two-dimensional list of values to supply to the database insert
-    let values = map (map DB.toSql . (\x -> [txHash x, BL.fromString . show . time $ x])) txs
     conn <- connectSqlite3 "txs.db"
-    txInsert <- DB.prepare conn "INSERT INTO txs VALUES (?, ?);"
-    DB.executeMany txInsert values
+    txInsert <- DB.prepare conn "INSERT INTO txs VALUES (?, ?, ?, ?, ?);"
+    --print $ map (map DB.toSql . map BL.toString . getInsertVals) txs
+    DB.executeMany txInsert $ map (map DB.toSql . map BL.toString . getInsertVals) txs
     DB.commit conn
     DB.disconnect conn
