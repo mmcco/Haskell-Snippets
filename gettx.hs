@@ -1,8 +1,8 @@
--- the last block isn't being parsed
+-- should make a text file output that stores data about the information parsed (number of blocks, number of txs, etc.)
 -- should clean up the function that gets insert values
--- what about the amount? need to review SQL table logic
+-- need to decide how to associate outputs with inputs
 -- create table statement for txs: CREATE TABLE txs (txHash TEXT UNIQUE NOT NULL, time INTEGER, coinbase TEXT, inputs TEXT, outputcalls TEXT, PRIMARY KEY(txHash));
--- create table statement for outputs: CREATE TABLE outputs (txHash TEXT, n INTEGER, time INTEGER, value REAL, addresses TEXT);
+-- create table statement for outputs: CREATE TABLE outputs (txHash TEXT, n INTEGER, time INTEGER, value REAL, addresses TEXT, inputs TEXT);
 -- create table statement for outputs: CREATE TABLE outputs (txHASH TEXT NOT NULL, callNum INTEGER NOT NULL, addresses TEXT NOT NULL);
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Aeson
@@ -13,6 +13,7 @@ import Control.Monad (mzero)
 import qualified Database.HDBC as DB
 import Database.HDBC.Sqlite3 (connectSqlite3)
 import Data.ByteString.Lazy (intercalate)
+import qualified Data.ByteString.Lazy as BB (concat)
 import Data.Maybe (fromMaybe, maybeToList)
 
 type BS = BL.ByteString
@@ -119,26 +120,32 @@ byteString = BL.fromString . show
 
 -- this is the logic used if each output is given its own row
 getInsertVals :: Tx -> [[BS]]
-getInsertVals tx = map (\x -> [hash, (byteString . callNum $ x), txTime, (byteString . value $ x), intercalate "|" (addresses x)]) . outputs $ tx
+getInsertVals tx = map (\x -> [hash, n x, txTime, txValue x, txAddresses x, txInputs]) . outputs $ tx
     where hash = txHash tx
+          n = byteString . callNum
           txTime = byteString . time $ tx
+          txValue = byteString . value
+          txAddresses = intercalate "|" . addresses
+          txInputs = intercalate "|" . map (\x -> BB.concat [fromMaybe "" $ inputHash x, " ", maybe "" byteString (outputCall x)]) . inputs $ tx
 
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
     -- using low blockheight to make testing faster
-    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "0"] []
+    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "4000"] []
     firstBlock <- getBlock . BL.fromString $ firstHash
     blocks <- blockLoop firstBlock
     print $ "length of blocks: " ++ (show . length $ blocks)
     --print ("blocks length: " ++ (show . length $ blocks))
-    --txs <- getTxs blocks
+    txs <- getTxs $ init blocks -- remove genesis block because bitcoind doesn't have info on genesis transaction
+    let percentMultipleInputs = 100 * length (filter (\x -> length (inputs x) > 1) txs) `div` length txs
+    print percentMultipleInputs
     --print . getInsertVals . last $ txs
     --map print . map (intercalate "|") . inputs $ txs
     --print . take 50 $ txs
     --print $ "length txs: " ++ (show . length $ txs)
     -- generate a two-dimensional list of values to supply to the database insert
     --conn <- connectSqlite3 "txs.db"
-    --txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?);"
+    --txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?, ?);"
     --print $ map (map DB.toSql . map BL.toString . getInsertVals) txs
     --let insertVals = concat . map getInsertVals $ txs
     --DB.executeMany txInsert $ map (map (DB.toSql . BL.toString)) insertVals
