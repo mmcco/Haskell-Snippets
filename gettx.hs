@@ -13,7 +13,7 @@ import Control.Monad (mzero)
 import qualified Database.HDBC as DB
 import Database.HDBC.Sqlite3 (connectSqlite3)
 import Data.ByteString.Lazy (intercalate)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, maybeToList)
 
 type BS = BL.ByteString
 
@@ -83,7 +83,7 @@ blockLoop :: Maybe Block -> IO [Block]
 blockLoop Nothing = return []
 blockLoop (Just block) = if previousHash == "" then return [block] else 
                             do
-                                lastBlock <- getBlock $ previousHash
+                                lastBlock <- getBlock previousHash
                                 rest <- blockLoop lastBlock
                                 return (block : rest)
     where previousHash = fromMaybe "" (prevHash block)
@@ -100,7 +100,7 @@ getTxs = txLoop . foldl1 (++) . map txs -- generate a list of all the blocks' tx
           txLoop (first:others) = do
                                       txData <- Process.readProcess "bitcoind" ["getrawtransaction", BL.toString first, "1"] []
                                       let maybeTx = decode . BL.fromString $ txData
-                                      let tx = maybe [] (\x -> [x]) maybeTx
+                                      let tx = maybeToList maybeTx
                                       rest <- txLoop others
                                       return (tx ++ rest)
 
@@ -119,7 +119,7 @@ byteString = BL.fromString . show
 
 -- this is the logic used if each output is given its own row
 getInsertVals :: Tx -> [[BS]]
-getInsertVals tx = map (\x -> hash : (byteString . callNum $ x) : txTime : (byteString . value $ x) : (intercalate "|" $ addresses x) : []) . outputs $ tx
+getInsertVals tx = map (\x -> [hash, (byteString . callNum $ x), txTime, (byteString . value $ x), intercalate "|" (addresses x)]) . outputs $ tx
     where hash = txHash tx
           txTime = byteString . time $ tx
 
