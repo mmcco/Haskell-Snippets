@@ -1,5 +1,6 @@
 -- what about the amount? need to review SQL table logic
 -- create table statement for txs: CREATE TABLE txs (txHash TEXT UNIQUE NOT NULL, time INTEGER, coinbase TEXT, inputs TEXT, outputcalls TEXT, PRIMARY KEY(txHash));
+-- create table statement for outputs: CREATE TABLE outputs (txHash TEXT, n INTEGER, time INTEGER, value REAL, addresses TEXT);
 -- create table statement for outputs: CREATE TABLE outputs (txHASH TEXT NOT NULL, callNum INTEGER NOT NULL, addresses TEXT NOT NULL);
 {-# LANGUAGE OverloadedStrings #-}
 import Data.Aeson
@@ -131,8 +132,9 @@ main = do
     --print $ "length txs: " ++ (show . length $ txs)
     -- generate a two-dimensional list of values to supply to the database insert
     conn <- connectSqlite3 "txs.db"
-    txInsert <- DB.prepare conn "INSERT INTO txs VALUES (?, ?, ?, ?, ?);"
+    txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?);"
     --print $ map (map DB.toSql . map BL.toString . getInsertVals) txs
-    DB.executeMany txInsert $ map (map DB.toSql . map BL.toString . concat . getInsertVals) txs
+    let insertVals = concat . map getInsertVals $ txs
+    DB.executeMany txInsert $ map (map (DB.toSql . BL.toString)) insertVals
     DB.commit conn
     DB.disconnect conn
