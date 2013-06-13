@@ -1,3 +1,5 @@
+-- the last block isn't being parsed
+-- should clean up the function that gets insert values
 -- what about the amount? need to review SQL table logic
 -- create table statement for txs: CREATE TABLE txs (txHash TEXT UNIQUE NOT NULL, time INTEGER, coinbase TEXT, inputs TEXT, outputcalls TEXT, PRIMARY KEY(txHash));
 -- create table statement for outputs: CREATE TABLE outputs (txHash TEXT, n INTEGER, time INTEGER, value REAL, addresses TEXT);
@@ -11,13 +13,14 @@ import Control.Monad (mzero)
 import qualified Database.HDBC as DB
 import Database.HDBC.Sqlite3 (connectSqlite3)
 import Data.ByteString.Lazy (intercalate)
+import Data.Maybe (fromMaybe)
 
 type BS = BL.ByteString
 
 data Block = Block {
     blockHash :: BS,
     txs :: [BS],
-    prevHash :: BS
+    prevHash :: Maybe BS
 } deriving (Show)
 
 data Tx = Tx {
@@ -47,7 +50,7 @@ instance FromJSON Block where
         Block <$>
         (v .: "hash") <*>
         (v .: "tx") <*>
-        (v .: "previousblockhash")
+        (v .:? "previousblockhash")
     parseJSON _ = mzero
 
 instance FromJSON Tx where
@@ -78,10 +81,12 @@ instance FromJSON Output where
 -- generates a list of all blocks before (and including) the supplied block
 blockLoop :: Maybe Block -> IO [Block]
 blockLoop Nothing = return []
-blockLoop (Just block) = do
-    lastBlock <- getBlock $ prevHash block
-    rest <- blockLoop lastBlock
-    return (block : rest)
+blockLoop (Just block) = if previousHash == "" then return [block] else 
+                            do
+                                lastBlock <- getBlock $ previousHash
+                                rest <- blockLoop lastBlock
+                                return (block : rest)
+    where previousHash = fromMaybe "" (prevHash block)
 
 -- gets the block associated with the supplied hash using bitcoind
 getBlock :: BS -> IO (Maybe Block)
@@ -121,20 +126,21 @@ getInsertVals tx = map (\x -> hash : (byteString . callNum $ x) : txTime : (byte
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
     -- using low blockheight to make testing faster
-    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "2000"] []
+    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "0"] []
     firstBlock <- getBlock . BL.fromString $ firstHash
     blocks <- blockLoop firstBlock
+    print $ "length of blocks: " ++ (show . length $ blocks)
     --print ("blocks length: " ++ (show . length $ blocks))
-    txs <- getTxs blocks
+    --txs <- getTxs blocks
     --print . getInsertVals . last $ txs
     --map print . map (intercalate "|") . inputs $ txs
     --print . take 50 $ txs
     --print $ "length txs: " ++ (show . length $ txs)
     -- generate a two-dimensional list of values to supply to the database insert
-    conn <- connectSqlite3 "txs.db"
-    txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?);"
+    --conn <- connectSqlite3 "txs.db"
+    --txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?);"
     --print $ map (map DB.toSql . map BL.toString . getInsertVals) txs
-    let insertVals = concat . map getInsertVals $ txs
-    DB.executeMany txInsert $ map (map (DB.toSql . BL.toString)) insertVals
-    DB.commit conn
-    DB.disconnect conn
+    --let insertVals = concat . map getInsertVals $ txs
+    --DB.executeMany txInsert $ map (map (DB.toSql . BL.toString)) insertVals
+    --DB.commit conn
+    --DB.disconnect conn
