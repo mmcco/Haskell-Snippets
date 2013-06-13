@@ -1,3 +1,4 @@
+-- what about the amount? need to review SQL table logic
 -- create table statement for txs: CREATE TABLE txs (txHash TEXT UNIQUE NOT NULL, time INTEGER, coinbase TEXT, inputs TEXT, outputcalls TEXT, PRIMARY KEY(txHash));
 -- create table statement for outputs: CREATE TABLE outputs (txHASH TEXT NOT NULL, callNum INTEGER NOT NULL, addresses TEXT NOT NULL);
 {-# LANGUAGE OverloadedStrings #-}
@@ -102,13 +103,19 @@ byteString :: Show a => a -> BS
 byteString = BL.fromString . show
 
 -- takes a tx and returns a list of values for an insert
-getInsertVals :: Tx -> [BS] --(BS, Int, BS, BS, BS)
-getInsertVals tx = [hash, txTime, txCoinbase, inputHashes, outputCalls]
-    where hash        = txHash tx
-          txTime      = byteString . time $ tx
-          txCoinbase  = maybe "" id . coinbase . head . inputs $ tx
-          inputHashes = intercalate "|" . map (maybe "" id) . map inputHash . inputs $ tx
-          outputCalls = intercalate "|" . map (maybe "" byteString) . map outputCall . inputs $ tx
+--getInsertVals :: Tx -> [BS] --(BS, Int, BS, BS, BS)
+--getInsertVals tx = [hash, txTime, txCoinbase, inputHashes, outputCalls]
+--    where hash        = txHash tx
+--          txTime      = byteString . time $ tx
+--          txCoinbase  = maybe "" id . coinbase . head . inputs $ tx
+--          inputHashes = intercalate "|" . map (maybe "" id) . map inputHash . inputs $ tx
+--          outputCalls = intercalate "|" . map (maybe "" byteString) . map outputCall . inputs $ tx
+
+-- this is the logic used if each output is given its own row
+getInsertVals :: Tx -> [[BS]]
+getInsertVals tx = map (\x -> hash : (byteString . callNum $ x) : txTime : (byteString . value $ x) : (intercalate "|" $ addresses x) : []) . outputs $ tx
+    where hash = txHash tx
+          txTime = byteString . time $ tx
 
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
@@ -126,6 +133,6 @@ main = do
     conn <- connectSqlite3 "txs.db"
     txInsert <- DB.prepare conn "INSERT INTO txs VALUES (?, ?, ?, ?, ?);"
     --print $ map (map DB.toSql . map BL.toString . getInsertVals) txs
-    DB.executeMany txInsert $ map (map DB.toSql . map BL.toString . getInsertVals) txs
+    DB.executeMany txInsert $ map (map DB.toSql . map BL.toString . concat . getInsertVals) txs
     DB.commit conn
     DB.disconnect conn
