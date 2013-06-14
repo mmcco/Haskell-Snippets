@@ -131,23 +131,23 @@ getInsertVals tx = map (\x -> [hash, n x, txTime, txValue x, txAddresses x, txIn
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
     -- using low blockheight to make testing faster
-    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "4000"] []
+    firstHash <- Process.readProcess "bitcoind" ["getblockhash", chainHeight] []
     firstBlock <- getBlock . BL.fromString $ firstHash
     blocks <- blockLoop firstBlock
-    print $ "length of blocks: " ++ (show . length $ blocks)
+    --print $ "length of blocks: " ++ (show . length $ blocks)
     --print ("blocks length: " ++ (show . length $ blocks))
     txs <- getTxs $ init blocks -- remove genesis block because bitcoind doesn't have info on genesis transaction
-    let percentMultipleInputs = 100 * length (filter (\x -> length (inputs x) > 1) txs) `div` length txs
-    print percentMultipleInputs
+    --let percentMultipleInputs = 100 * length (filter (\x -> length (inputs x) > 1) txs) `div` length txs
+    --print percentMultipleInputs
     --print . getInsertVals . last $ txs
     --map print . map (intercalate "|") . inputs $ txs
     --print . take 50 $ txs
     --print $ "length txs: " ++ (show . length $ txs)
     -- generate a two-dimensional list of values to supply to the database insert
-    --conn <- connectSqlite3 "txs.db"
-    --txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?, ?);"
+    conn <- connectSqlite3 "txs.db"
+    txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?, ?);"
     --print $ map (map DB.toSql . map BL.toString . getInsertVals) txs
-    --let insertVals = concat . map getInsertVals $ txs
-    --DB.executeMany txInsert $ map (map (DB.toSql . BL.toString)) insertVals
-    --DB.commit conn
-    --DB.disconnect conn
+    let insertVals = concat . map getInsertVals $ txs
+    DB.executeMany txInsert $ map (map (DB.toSql . BL.toString)) insertVals
+    DB.commit conn
+    DB.disconnect conn
