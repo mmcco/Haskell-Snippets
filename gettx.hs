@@ -147,7 +147,7 @@ main = do
     conn <- connectSqlite3 "txs.db"
     txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?, ?);"
     --print $ map (map DB.toSql . map BL.toString . getInsertVals) txs
-    let insertVals = concat . map getInsertVals $ txs
+    let insertVals = concatMap getInsertVals $ txs
     DB.executeMany txInsert $ map (map (DB.toSql . BL.toString)) insertVals
     DB.commit conn
     DB.disconnect conn
