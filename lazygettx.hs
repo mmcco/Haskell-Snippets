@@ -113,7 +113,7 @@ main = do
     -- using low blockheight to make testing faster
     firstHash <- Process.readProcess "bitcoind" ["getblockhash", chainHeight] []
     blockTxs <- fmap init . blockLoop . BL.fromString $ firstHash
-    writeFile "addresses.txt" (unlines . map BL.toString $ blockTxs)
+    writeFile "hashes.txt" (unlines . map BL.toString $ blockTxs)
     {-
     conn <- connectSqlite3 "txs.db"
     txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?, ?);"
