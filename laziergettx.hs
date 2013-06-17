@@ -119,7 +119,7 @@ getInsertVals tx = map (\x -> [hash, n x, txTime, txValue x, txAddresses x, txIn
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
     -- using low blockheight to make testing faster
-    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "1000"] []
+    firstHash <- Process.readProcess "bitcoind" ["getblockhash", chainHeight] []
     conn <- connectSqlite3 "txs.db"
     txLoop conn (BL.fromString firstHash)
     DB.commit conn
