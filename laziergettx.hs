@@ -18,8 +18,6 @@ import Data.Maybe (fromMaybe, maybeToList, catMaybes)
 
 type BS = BL.ByteString
 
-data Either a b = Left a | Right b
-
 data Block = Block {
     blockHash :: BS,
     txs :: [BS],
@@ -97,23 +95,16 @@ getTx hash = do
                 let maybeTx = decode . BL.fromString $ txData
                 return maybeTx
 
-blockLoop :: BS -> IO [BS]
-blockLoop hash = do
-                    block <- getBlock hash
-                    let blockTxs = maybe [] txs block
-                        previousHash = maybe Nothing prevHash block
-                    maybe (return blockTxs) (fmap (blockTxs ++) . blockLoop) previousHash
-
-newLoop :: Connection -> BS -> IO ()
-newLoop conn hash = do
+txLoop :: Connection -> BS -> IO ()
+txLoop conn hash = do
                        block <- getBlock hash
-                       let txHashes = maybe [] txs block
+                       let txHashes = filter ((/=) "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b") . maybe [] txs $ block
                        blockTxs <- sequence . map getTx $ txHashes
                        let insertVals = map getInsertVals . catMaybes $ blockTxs
                            previousHash = maybe Nothing prevHash block
                        txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?, ?);"
                        DB.executeMany txInsert . map (map (DB.toSql . BL.toString)) . concat $ insertVals
-                       maybe (return ()) (newLoop conn) previousHash
+                       maybe (return ()) (txLoop conn) previousHash
 
 -- this is the logic used if each output is given its own row
 getInsertVals :: Tx -> [[BS]]
@@ -128,13 +119,8 @@ getInsertVals tx = map (\x -> [hash, n x, txTime, txValue x, txAddresses x, txIn
 main = do
     chainHeight <- Process.readProcess "bitcoind" ["getblockcount"] []
     -- using low blockheight to make testing faster
-    firstHash <- Process.readProcess "bitcoind" ["getblockhash", chainHeight] []
-    blockTxs <- fmap init . blockLoop . BL.fromString $ firstHash
-    writeFile "addresses.txt" (unlines . map BL.toString $ blockTxs)
-    {-
+    firstHash <- Process.readProcess "bitcoind" ["getblockhash", "1000"] []
     conn <- connectSqlite3 "txs.db"
-    txInsert <- DB.prepare conn "INSERT INTO outputs VALUES (?, ?, ?, ?, ?, ?);"
-    let insertVals = concatMap getInsertVals $ txs
-    DB.executeMany txInsert $ map (map (DB.toSql . BL.toString)) insertVals
+    txLoop conn (BL.fromString firstHash)
     DB.commit conn
-    DB.disconnect conn -}
+    DB.disconnect conn
