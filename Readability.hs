@@ -1,6 +1,6 @@
 -- have to deal with ellipses
 
-import Data.List (break, isSuffixOf)
+import Data.List (break, isSuffixOf, intercalate)
 import Control.Applicative
 
 
@@ -8,7 +8,7 @@ sentences :: String -> [String]
 sentences "" = []
 sentences xs = if hasExceptions fullLine
                  then (fullLine ++ safeHead theRest) : (safeTail theRest)
-                 else fullLine : (safeTail theRest)
+                 else fullLine : theRest
     where isPunctuation = (flip elem) ['.', '?', '!']
           (line, rest) = break isPunctuation xs
           punctuation = takeWhile isPunctuation rest
@@ -36,4 +36,4 @@ isSentence xs = (endsWithPunctuation xs) && (noExceptions xs)
 -}
 
 main = do
-    print . concat . sentences $ "This is a test."
+    print . intercalate "***" . sentences $ "This is a test. It really is! You swear? Yeah."
