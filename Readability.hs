@@ -27,13 +27,13 @@ safeHead :: [String] -> String
 safeHead [] = ""
 safeHead xs = head xs
 
-
+{-
 isSentence :: String -> Bool
 isSentence "" = False
 isSentence xs = (endsWithPunctuation xs) && (noExceptions xs)
     where endsWithPunctuation xs = or $ pure isSuffixOf <*> [".", "?", "!"] <*> pure xs
           noExceptions        xs = not . or $ pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "ie.", "i.e.", "e.g."] <*> pure xs
-
+-}
 
 main = do
-    print . length . sentences $ "This is a test. It really is a test? You're right!"
+    print . concat . sentences $ "This is a test."
