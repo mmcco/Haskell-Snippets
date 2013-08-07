@@ -1,20 +1,20 @@
 -- have to deal with ellipses
 -- try splitting into words first
 
+module Readability
+( sentences,
+  breakNext,
+  breakPunc
+) where
+
 import Data.List (break, isSuffixOf, intercalate)
 import Control.Applicative
 
 
 sentences :: String -> [String]
 sentences "" = []
-sentences xs = if hasExceptions fullLine
-                 then trim (fullLine ++ safeHead theRest) : (safeTail theRest)
-                 else trim fullLine : theRest
-    where isPunctuation = flip elem ['.', '?', '!']
-          (line, rest) = break isPunctuation xs
-          punctuation = takeWhile isPunctuation rest
-          fullLine = line ++ punctuation
-          theRest = sentences (dropWhile isPunctuation rest)
+sentences xs = map trim . combine . breakPunc $ xs
+    where combine = foldl (\ys z -> if hasExceptions (safeLast ys) then (safeInit ys) ++ [(safeLast ys ++ z)] else ys ++ [z]) []
           hasExceptions xs = or $ pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "ie.", " i.", "i.e.", "e.", "e.g."] <*> pure xs
 
 
@@ -28,6 +28,16 @@ safeHead [] = ""
 safeHead xs = head xs
 
 
+safeLast :: [String] -> String
+safeLast [] = ""
+safeLast xs = last xs
+
+
+safeInit :: [a] -> [a]
+safeInit [] = []
+safeInit xs = init xs
+
+
 -- the first returned list contains everything up through the first contiguous set of "True" elements
 breakNext :: (a -> Bool) -> [a] -> ([a], [a])
 breakNext f [] = ([], [])
@@ -35,6 +45,13 @@ breakNext f [x] = ([x], [])
 breakNext f xs = (a ++ c, d)
     where (a, b) = break f xs
           (c, d) = span f b
+
+
+-- returns a list of possible sentences broken at punctuation with breakNext
+breakPunc :: String -> [String]
+breakPunc "" = []
+breakPunc xs = this : breakPunc next
+    where (this, next) = breakNext (flip elem ".?!") xs
 
 
 trim :: String -> String
