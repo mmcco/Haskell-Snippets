@@ -36,5 +36,5 @@ trim = dropWhile isWhitespace . reverse . dropWhile isWhitespace . reverse
 main = do
     zenFile <- readFile "zen.txt"
     let zenSentences =  sentences zenFile
-    sequence . map putStrLn $ zenSentences
-    print $ "number of sentences: " ++ (show $ length zenSentences)
+    mapM_ putStrLn zenSentences
+    print $ "number of sentences: " ++ show (length zenSentences)
