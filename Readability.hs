@@ -7,9 +7,9 @@ import Control.Applicative
 sentences :: String -> [String]
 sentences "" = []
 sentences xs = if hasExceptions fullLine
-                 then (fullLine ++ safeHead theRest) : (safeTail theRest)
-                 else fullLine : theRest
-    where isPunctuation = (flip elem) ['.', '?', '!']
+                 then trim (fullLine ++ safeHead theRest) : (safeTail theRest)
+                 else trim fullLine : theRest
+    where isPunctuation = flip elem ['.', '?', '!']
           (line, rest) = break isPunctuation xs
           punctuation = takeWhile isPunctuation rest
           fullLine = line ++ punctuation
@@ -27,13 +27,14 @@ safeHead :: [String] -> String
 safeHead [] = ""
 safeHead xs = head xs
 
-{-
-isSentence :: String -> Bool
-isSentence "" = False
-isSentence xs = (endsWithPunctuation xs) && (noExceptions xs)
-    where endsWithPunctuation xs = or $ pure isSuffixOf <*> [".", "?", "!"] <*> pure xs
-          noExceptions        xs = not . or $ pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "ie.", "i.e.", "e.g."] <*> pure xs
--}
+
+trim :: String -> String
+trim = dropWhile isWhitespace . reverse . dropWhile isWhitespace . reverse
+    where isWhitespace = flip elem [' ', '\t', '\n']
+
 
 main = do
-    print . intercalate "***" . sentences $ "This is a test. It really is! You swear? Yeah."
+    zenFile <- readFile "zen.txt"
+    let zenSentences =  sentences zenFile
+    sequence . map putStrLn $ zenSentences
+    print $ "number of sentences: " ++ (show $ length zenSentences)
