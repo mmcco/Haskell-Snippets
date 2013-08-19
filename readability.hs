@@ -1,11 +1,8 @@
 -- have to deal with ellipses
 -- try splitting into words first
+-- there is a problem in the fact that "i.e." and "e.g." are split in half by breakNext
+-- the resulting "e." and "i." are common and cannot be pattern-matched
 
-module Readability
-( sentences,
-  breakNext,
-  breakPunc
-) where
 
 import Data.List (break, isSuffixOf, intercalate)
 import Control.Applicative
@@ -15,7 +12,7 @@ sentences :: String -> [String]
 sentences "" = []
 sentences xs = map trim . combine . breakPunc $ xs
     where combine = foldl (\ys z -> if hasExceptions (safeLast ys) then (safeInit ys) ++ [safeLast ys ++ z] else ys ++ [z]) []
-          hasExceptions xs = or $ pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "ie.", " i.", "i.e.", "e.", "e.g."] <*> pure xs
+          hasExceptions xs = or $ pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> pure xs
 
 
 safeTail :: [a] -> [a]
@@ -38,7 +35,7 @@ safeInit [] = []
 safeInit xs = init xs
 
 
--- the first returned list contains everything up through the first contiguous set of "True" elements
+-- the first returned list contains the first set of contiguous "True" elements and the following set of contiguous "False" elements
 breakNext :: (a -> Bool) -> [a] -> ([a], [a])
 breakNext f [] = ([], [])
 breakNext f [x] = ([x], [])
@@ -64,3 +61,4 @@ main = do
     let mySentences =  sentences myFile
     mapM_ putStrLn mySentences
     print $ "number of sentences: " ++ show (length mySentences)
+    print (map length mySentences)
