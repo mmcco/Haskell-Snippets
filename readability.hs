@@ -14,7 +14,7 @@ import Control.Applicative
 sentences :: String -> [String]
 sentences "" = []
 sentences xs = map trim . combine . breakPunc $ xs
-    where combine = foldl (\ys z -> if hasExceptions (safeLast ys) then (safeInit ys) ++ [(safeLast ys ++ z)] else ys ++ [z]) []
+    where combine = foldl (\ys z -> if hasExceptions (safeLast ys) then (safeInit ys) ++ [safeLast ys ++ z] else ys ++ [z]) []
           hasExceptions xs = or $ pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "ie.", " i.", "i.e.", "e.", "e.g."] <*> pure xs
 
 
@@ -56,11 +56,11 @@ breakPunc xs = this : breakPunc next
 
 trim :: String -> String
 trim = dropWhile isWhitespace . reverse . dropWhile isWhitespace . reverse
-    where isWhitespace = flip elem [' ', '\t', '\n']
+    where isWhitespace = flip elem " \t\n"
 
 
 main = do
-    zenFile <- readFile "test.txt"
-    let zenSentences =  sentences zenFile
-    mapM_ putStrLn zenSentences
-    print $ "number of sentences: " ++ show (length zenSentences)
+    myFile <- readFile "test.txt"
+    let mySentences =  sentences myFile
+    mapM_ putStrLn mySentences
+    print $ "number of sentences: " ++ show (length mySentences)
