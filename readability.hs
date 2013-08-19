@@ -12,7 +12,9 @@ sentences :: String -> [String]
 sentences "" = []
 sentences xs = map trim . combine . breakPunc $ xs
     where combine = foldl (\ys z -> if hasException (safeLast ys) z then (safeInit ys) ++ [safeLast ys ++ z] else ys ++ [z]) []
-          hasException xs ys = or $ (pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> pure xs) ++ (pure (\suffix prefix first second -> isSuffixOf suffix first && isPrefixOf prefix second) <*> ["i.", "e."] <*> ["e.", "g."] <*> pure xs <*> pure ys)
+        -- takes two tentative sentences and determines whether they were split on non-sentence-ending punctuation
+        hasException xs ys = or $ (pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> pure xs)
+                                  ++ (pure (\suffix prefix first second -> isSuffixOf suffix first && isPrefixOf prefix second) <*> ["i.", "e."] <*> ["e.", "g."] <*> pure xs <*> pure ys)
 
 
 safeTail :: [a] -> [a]
