@@ -4,15 +4,15 @@
 -- the resulting "e." and "i." are common and cannot be pattern-matched
 
 
-import Data.List (break, isSuffixOf, intercalate)
+import Data.List (break, isPrefixOf, isSuffixOf, intercalate)
 import Control.Applicative
 
 
 sentences :: String -> [String]
 sentences "" = []
 sentences xs = map trim . combine . breakPunc $ xs
-    where combine = foldl (\ys z -> if hasExceptions (safeLast ys) then (safeInit ys) ++ [safeLast ys ++ z] else ys ++ [z]) []
-          hasExceptions xs = or $ pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> pure xs
+    where combine = foldl (\ys z -> if hasException (safeLast ys) z then (safeInit ys) ++ [safeLast ys ++ z] else ys ++ [z]) []
+          hasException xs ys = or $ (pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> pure xs) ++ (pure (\suffix prefix first second -> isSuffixOf suffix first && isPrefixOf prefix second) <*> ["i.", "e."] <*> ["e.", "g."] <*> pure xs <*> pure ys)
 
 
 safeTail :: [a] -> [a]
