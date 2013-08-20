@@ -77,11 +77,11 @@ trim = dropWhile isWhitespace . reverse . dropWhile isWhitespace . reverse
 
 main = do
     myFile <- readFile "test.txt"
-    let mySentences = map (\x -> x ++ "\n***") . sentences $ myFile
+    let mySentences = map (++ "\n***") . sentences $ myFile
     mapM_ putStrLn mySentences
     print $ "number of sentences: " ++ show (length mySentences)
     print (map length mySentences)
-    let myNewSentences = map (\x -> x ++ "\n***") . newSent $ myFile
+    let myNewSentences = map (++ "\n***") . newSent $ myFile
     mapM_ putStrLn myNewSentences
     print $ "number of sentences from newSent: " ++ show (length myNewSentences)
     print (map length mySentences)
