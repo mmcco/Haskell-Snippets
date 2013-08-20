@@ -6,17 +6,27 @@ import Data.Monoid
 
 sentences :: String -> [String]
 sentences = filter (\x -> length x > 1) . map (trim " \n\t") . combine . words
-    where combine = foldl (\acc sent -> if isBreak (mlast acc) && not (hasException (mlast acc) sent)
-                                          then acc ++ [sent]
-                                          else safeInit acc ++ [mlast acc ++  " " ++ sent])
+    where combine = foldr (\sent acc -> if isBreak sent && not (isException sent)
+                                          then sent : acc
+                                          else (sent ++ " " ++ mhead acc) : safeTail acc)
                         []
-          hasException xs ys = or $ isSuffixOf <$> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> [xs]
-          isBreak xs = or $ isSuffixOf <$> [".", "!", "?", ".\"",".'","!\"","!'","?\"","?'"] <*> [xs]
+          isException xs = or $ isSuffixOf <$> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> [xs]
+          isBreak xs = any (`isSuffixOf` xs) [".", "!", "?", ".\"",".'","!\"","!'","?\"","?'"]
 
 
 mlast :: Monoid a => [a] -> a
 mlast [] = mempty
 mlast xs = last xs
+
+
+mhead :: Monoid a => [a] -> a
+mhead [] = mempty
+mhead xs = head xs
+
+
+safeTail :: [a] -> [a]
+safeTail [] = []
+safeTail xs = tail xs
 
 
 safeInit :: [a] -> [a]
