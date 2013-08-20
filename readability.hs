@@ -18,7 +18,7 @@ sentences xs = filter (\x -> length x > 1) . map trim . combine . words $ xs
     where combine = foldl (\acc sent -> if isBreak (lastStr acc) && not (hasException (lastStr acc) sent)
                                           then acc ++ [sent]
                                           else safeInit acc ++ [lastStr acc ++  " " ++ sent]) []
-          hasException xs ys = or $ [isSuffixOf] <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> [xs]
+          hasException xs ys = or $ isSuffixOf <$> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> [xs]
           isBreak xs = or $ isSuffixOf <$> [".", "!", "?", ".\"",".'","!\"","!'","?\"","?'"] <*> [xs]
 
 
