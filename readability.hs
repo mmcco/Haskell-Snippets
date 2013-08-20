@@ -7,14 +7,13 @@
 -- I'm going to try to fix this by first breaking by word
 
 
-import Data.List (break, isPrefixOf, isSuffixOf, intercalate)
+import Data.List (isPrefixOf, isSuffixOf, intersect)
 import Control.Applicative
 import System.Environment (getArgs)
 
 
 sentences :: String -> [String]
-sentences "" = []
-sentences xs = filter (\x -> length x > 1) . map trim . combine . words $ xs
+sentences xs = filter (\x -> length x > 1) . map (trim " \n\t") . combine . words $ xs
     where combine = foldl (\acc sent -> if isBreak (lastStr acc) && not (hasException (lastStr acc) sent)
                                           then acc ++ [sent]
                                           else safeInit acc ++ [lastStr acc ++  " " ++ sent]) []
@@ -32,9 +31,14 @@ safeInit [] = []
 safeInit xs = init xs
 
 
-trim :: String -> String
-trim = dropWhile isWhitespace . reverse . dropWhile isWhitespace . reverse
-    where isWhitespace = flip elem " \t\n"
+-- removes the supplied items from the ends of the list
+trim :: Eq a => [a] -> [a] -> [a]
+trim junk = dropWhile (`elem` junk) . reverse . dropWhile (`elem` junk) . reverse
+
+
+realWords :: String -> [String]
+realWords = filter (\word -> length (intersect word alphabet) > 0) . words
+    where alphabet = ['A'..'Z'] ++ ['a'..'z']
 
 
 main = do
