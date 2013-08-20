@@ -2,6 +2,9 @@
 -- try splitting into words first
 -- there is a problem in the fact that "i.e." and "e.g." are split in half by breakNext
 -- the resulting "e." and "i." are common and cannot be pattern-matched
+-- the above problem is tentatively fixed
+-- however, it's splitting senteces in quotations before the closing quotation mark
+-- I'm going to try to fix this by first breaking by word
 
 
 import Data.List (break, isPrefixOf, isSuffixOf, intercalate)
@@ -10,11 +13,25 @@ import Control.Applicative
 
 sentences :: String -> [String]
 sentences "" = []
-sentences xs = map trim . combine . breakPunc $ xs
-    where combine = foldl (\ys z -> if hasException (safeLast ys) z then (safeInit ys) ++ [safeLast ys ++ z] else ys ++ [z]) []
+sentences xs = filter (\x -> length x > 1) . map trim . combine . breakPunc $ xs
+    where combine = foldl (\acc sent -> if hasException (lastStr acc) sent then safeInit acc ++ [lastStr acc ++ sent] else acc ++ [sent]) []
           -- takes two tentative sentences and determines whether they were split on non-sentence-ending punctuation
-          hasException xs ys = or $ (pure isSuffixOf <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> pure xs)
-                                    ++ (pure (\suffix prefix first second -> isSuffixOf suffix first && isPrefixOf prefix second) <*> ["i.", "e."] <*> ["e.", "g."] <*> pure xs <*> pure ys)
+          hasException xs ys = or $ (isSuffixOf
+                                   <$> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."]
+                                   <*> [xs])
+                                 ++ ((\suffix prefix first second -> isSuffixOf suffix first && isPrefixOf prefix second)
+                                   <$> ["i.", "e."]
+                                   <*> ["e.", "g."]
+                                   <*> [xs]
+                                   <*> [ys])
+
+
+newSent :: String -> [String]
+newSent "" = []
+newSent xs = filter (\x -> length x > 1) . map trim . combine . words $ xs
+    where combine = foldl (\acc sent -> if isBreak (lastStr acc) && not (hasException (lastStr acc) sent) then acc ++ [sent] else safeInit acc ++ [lastStr acc ++  " " ++ sent]) []
+          hasException xs ys = or $ [isSuffixOf] <*> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> [xs]
+          isBreak xs = or $ isSuffixOf <$> [".", "!", "?", ".\"",".'","!\"","!'","?\"","?'"] <*> [xs]
 
 
 safeTail :: [a] -> [a]
@@ -27,9 +44,9 @@ safeHead [] = ""
 safeHead xs = head xs
 
 
-safeLast :: [String] -> String
-safeLast [] = ""
-safeLast xs = last xs
+lastStr :: [String] -> String
+lastStr [] = ""
+lastStr strs = last strs
 
 
 safeInit :: [a] -> [a]
@@ -50,7 +67,7 @@ breakNext f xs = (a ++ c, d)
 breakPunc :: String -> [String]
 breakPunc "" = []
 breakPunc xs = this : breakPunc next
-    where (this, next) = breakNext (flip elem ".?!") xs
+    where (this, next) = breakNext (`elem` ".?!") xs
 
 
 trim :: String -> String
@@ -60,7 +77,11 @@ trim = dropWhile isWhitespace . reverse . dropWhile isWhitespace . reverse
 
 main = do
     myFile <- readFile "test.txt"
-    let mySentences =  sentences myFile
+    let mySentences = map (\x -> x ++ "\n***") . sentences $ myFile
     mapM_ putStrLn mySentences
     print $ "number of sentences: " ++ show (length mySentences)
+    print (map length mySentences)
+    let myNewSentences = map (\x -> x ++ "\n***") . newSent $ myFile
+    mapM_ putStrLn myNewSentences
+    print $ "number of sentences from newSent: " ++ show (length myNewSentences)
     print (map length mySentences)
