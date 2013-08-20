@@ -14,11 +14,6 @@ sentences = filter (\x -> length x > 1) . map (trim " \n\t") . combine . words
           isBreak xs = any (`isSuffixOf` xs) [".", "!", "?", ".\"",".'","!\"","!'","?\"","?'"]
 
 
-mlast :: Monoid a => [a] -> a
-mlast [] = mempty
-mlast xs = last xs
-
-
 mhead :: Monoid a => [a] -> a
 mhead [] = mempty
 mhead xs = head xs
@@ -27,11 +22,6 @@ mhead xs = head xs
 safeTail :: [a] -> [a]
 safeTail [] = []
 safeTail xs = tail xs
-
-
-safeInit :: [a] -> [a]
-safeInit [] = []
-safeInit xs = init xs
 
 
 -- removes the supplied items from the ends of the list
