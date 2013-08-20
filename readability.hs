@@ -10,7 +10,7 @@ sentences = filter (\x -> length x > 1) . map (trim " \n\t") . combine . words
                                           then sent : acc
                                           else (sent ++ " " ++ mhead acc) : safeTail acc)
                         []
-          isException xs = or $ isSuffixOf <$> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> [xs]
+          isException xs = any (`isSuffixOf` xs) ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."]
           isBreak xs = any (`isSuffixOf` xs) [".", "!", "?", ".\"",".'","!\"","!'","?\"","?'"]
 
 
