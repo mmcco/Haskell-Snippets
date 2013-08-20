@@ -10,20 +10,21 @@
 import Data.List (isPrefixOf, isSuffixOf, intersect)
 import Control.Applicative
 import System.Environment (getArgs)
+import Data.Monoid
 
 
 sentences :: String -> [String]
-sentences xs = filter (\x -> length x > 1) . map (trim " \n\t") . combine . words $ xs
-    where combine = foldl (\acc sent -> if isBreak (lastStr acc) && not (hasException (lastStr acc) sent)
+sentences = filter (\x -> length x > 1) . map (trim " \n\t") . combine . words
+    where combine = foldl (\acc sent -> if isBreak (mlast acc) && not (hasException (mlast acc) sent)
                                           then acc ++ [sent]
-                                          else safeInit acc ++ [lastStr acc ++  " " ++ sent]) []
+                                          else safeInit acc ++ [mlast acc ++  " " ++ sent]) []
           hasException xs ys = or $ isSuffixOf <$> ["Mr.", "Mrs.", "Dr.", "St.", "cf.", "eg.", "i.e.", "e.g."] <*> [xs]
           isBreak xs = or $ isSuffixOf <$> [".", "!", "?", ".\"",".'","!\"","!'","?\"","?'"] <*> [xs]
 
 
-lastStr :: [String] -> String
-lastStr [] = ""
-lastStr strs = last strs
+mlast :: Monoid a => [a] -> a
+mlast [] = mempty
+mlast xs = last xs
 
 
 safeInit :: [a] -> [a]
@@ -36,8 +37,9 @@ trim :: Eq a => [a] -> [a] -> [a]
 trim junk = dropWhile (`elem` junk) . reverse . dropWhile (`elem` junk) . reverse
 
 
+-- only returns real words (not dashes, ellipses, etc.) and removes punctuation like dashes from the ends of words
 realWords :: String -> [String]
-realWords = filter (\word -> length (intersect word alphabet) > 0) . words
+realWords = map (trim "-") . filter (\word -> length (intersect word alphabet) > 0) . words
     where alphabet = ['A'..'Z'] ++ ['a'..'z']
 
 
