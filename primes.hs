@@ -17,10 +17,10 @@ primes 0 _    = []
 primes n list = head list : primes (n-1) (sieve list)
 
 sieve :: [Integer] -> [Integer]
-sieve (x:xs) = filter (x `doesntDivide`) xs
+sieve (x:xs) = filter (x `isntDivisorOf`) xs
 
-doesntDivide :: Integer -> Integer -> Bool
-doesntDivide x y = y `mod` x /= 0
+isntDivisorOf :: Integer -> Integer -> Bool
+isntDivisorOf x y = y `mod` x /= 0
 
 main =
     print $ getPrimes 10
