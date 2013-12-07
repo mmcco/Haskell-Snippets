@@ -6,7 +6,7 @@
     This was written as an example in a paper for a Discrete
     Math class. It therefore uses as little non-obvious syntax
     as possible. I may write another version using "where"
-    syntax and other such things.
+    syntax, type classes, and other such things.
 -}
 
 getPrimes :: Integer -> [Integer]
