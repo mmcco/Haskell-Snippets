@@ -1,3 +1,14 @@
+{-
+    A the primary functin (getPrimes) returns a list of the
+    first n primes using a Sieve of Eratosthenes via lazy
+    evaluation.
+
+    This was written as an example in a paper for a Discrete
+    Math class. It therefore uses as little non-obvious syntax
+    as possible. I may write another version using "where"
+    syntax and other such things.
+-}
+
 getPrimes :: Integer -> [Integer]
 getPrimes n = primes n [2..]
 
@@ -6,10 +17,10 @@ primes 0 _    = []
 primes n list = head list : primes (n-1) (sieve list)
 
 sieve :: [Integer] -> [Integer]
-sieve list = filter ((head list) `isntDivisorOf`) (tail list)
+sieve list = filter ((head list) `divides`) (tail list)
 
-isntDivisorOf :: Integer -> Integer -> Bool
-isntDivisorOf x y = y `mod` x /= 0
+divides :: Integer -> Integer -> Bool
+divides x y = y `mod` x /= 0
 
 main =
     print $ getPrimes 10
