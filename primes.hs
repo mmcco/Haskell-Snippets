@@ -1,5 +1,5 @@
 {-
-    A the primary functin (getPrimes) returns a list of the
+    The primary function (getPrimes) returns a list of the
     first n primes using a Sieve of Eratosthenes via lazy
     evaluation.
 
