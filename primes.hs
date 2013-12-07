@@ -17,7 +17,7 @@ primes 0 _    = []
 primes n list = head list : primes (n-1) (sieve list)
 
 sieve :: [Integer] -> [Integer]
-sieve list = filter ((head list) `doesntDivide`) (tail list)
+sieve (x:xs) = filter (x `doesntDivide`) xs
 
 doesntDivide :: Integer -> Integer -> Bool
 doesntDivide x y = y `mod` x /= 0
