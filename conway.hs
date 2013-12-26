@@ -26,20 +26,23 @@ data Board = Board { cells :: Array Int Bool,
                    }
 
 applyRules :: Board -> Board
-applyRules board = Board
+applyRules board = Board    -- we must construct a new cells Array...
                     (listArray (0, numCells board - 1)
                      . map (isLive . neighSum)
                      $ [(r,c) | r<-[0..(numRows board - 1)], c<-[0..(numCols board - 1)]])
+                    -- ...leaving the last three values in Board unmodified
                     (numRows board) (numCols board) (numCells board)
 
+          -- neighSum returns the specified cell's number of live neighbors
     where neighSum (r,c) = (cells board ! loc (r,c), length
                                                      . filter id
                                                      . map (\x -> cells board ! x)
                                                      . filter (/= loc (r,c))
                                                      $ [loc (a,b) | a<-[r-1..r+1], b<-[c-1..c+1]])
+          -- loc returns the 1D index of a cell when given it's 2D coordinates
           loc (r,c) = (numCols board) * (r `mod` numRows board) + (c `mod` numCols board)
           isLive (wasAlive, neighs) = (neighs == 3) || (wasAlive && neighs == 2)
-          
+ 
 
 instance Show Board where
     show board = intercalate "\n"
@@ -48,6 +51,7 @@ instance Show Board where
 
         where getPStr cell = if cell then "@ " else "- "
 
+-- recursively clears terminal, prints board, delays, and applies rules
 iterBoard :: Int -> Board -> IO Board
 iterBoard 0 board = return board
 iterBoard iters board = do
@@ -63,6 +67,7 @@ main = do
         numRows = read numRowsStr :: Int
         numCols = read numColsStr :: Int
         numCells = numRows * numCols
+        -- generate random cells using the user-supplied liveness probability
         initCols = map (< (read prob :: Double)) . take numCells . randoms $ gen
         arr = listArray (0, numCells-1) initCols :: Array Int Bool
         board = Board arr numRows numCols numCells
