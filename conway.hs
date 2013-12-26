@@ -1,3 +1,13 @@
+{- 
+    An implementation of Conway's Game of Life
+    Run using format: ./conway numRows numCols numIters prob
+        numRows
+        numCols
+        numIters: number of boards to print
+        prob: probability of each cell in the init board being alive
+
+    Uses the IArray library for time efficiency.
+-}
 import Control.Concurrent
 import System.Environment
 import System.IO
@@ -28,7 +38,7 @@ applyRules board = Board
                                                      . filter (/= loc (r,c))
                                                      $ [loc (a,b) | a<-[r-1..r+1], b<-[c-1..c+1]])
           loc (r,c) = (numCols board) * (r `mod` numRows board) + (c `mod` numCols board)
-          isLive (wasAlive, neighs) = neighs == 3 || (wasAlive && neighs == 2)
+          isLive (wasAlive, neighs) = (neighs == 3) || (wasAlive && neighs == 2)
           
 
 instance Show Board where
@@ -47,13 +57,13 @@ iterBoard iters board = do
                            iterBoard (iters-1) (applyRules board)
 
 main = do
-    numColsStr:(numRowsStr:(numItersStr:[])) <- getArgs
+    numRowsStr:(numColsStr:(numItersStr:(prob:[]))) <- getArgs
     gen <- getStdGen
     let numIters = read numItersStr :: Int
         numRows = read numRowsStr :: Int
         numCols = read numColsStr :: Int
         numCells = numRows * numCols
-        initCols = take numCells (randoms gen)
+        initCols = map (< (read prob :: Double)) . take numCells . randoms $ gen
         arr = listArray (0, numCells-1) initCols :: Array Int Bool
         board = Board arr numRows numCols numCells
     iterBoard numIters board
