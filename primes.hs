@@ -23,4 +23,4 @@ isntDivisorOf :: Integer -> Integer -> Bool
 isntDivisorOf x y = y `mod` x /= 0
 
 main =
-    print $ getPrimes 10
+    print $ getPrimes 10000
