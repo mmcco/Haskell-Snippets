@@ -8,6 +8,7 @@
 
     Uses the IArray library for time efficiency.
 -}
+
 import Control.Concurrent
 import System.Environment
 import System.IO
@@ -26,14 +27,14 @@ data Board = Board { cells :: Array Int Bool,
                    }
 
 applyRules :: Board -> Board
-applyRules board = Board    -- we must construct a new cells Array...
+applyRules board = Board    -- we must construct a new Board, with a new cells Array...
                     (listArray (0, numCells board - 1)
                      . map (isLive . neighSum)
                      $ [(r,c) | r<-[0..(numRows board - 1)], c<-[0..(numCols board - 1)]])
                     -- ...leaving the last three values in Board unmodified
                     (numRows board) (numCols board) (numCells board)
 
-          -- neighSum returns the specified cell's number of live neighbors
+          -- neighSum returns a tuple: the liveness of the specified cell, and its number of live neighbors
     where neighSum (r,c) = (cells board ! loc (r,c), length
                                                      . filter id
                                                      . map (\x -> cells board ! x)
@@ -46,7 +47,7 @@ applyRules board = Board    -- we must construct a new cells Array...
 
 instance Show Board where
     show board = intercalate "\n"
-                   . map (concat . (map getPStr))
+                   . map (concatMap getPStr)
                    $ chunksOf (numRows board) (elems . cells $ board)
 
         where getPStr cell = if cell then "@ " else "- "
@@ -61,7 +62,7 @@ iterBoard iters board = do
                            iterBoard (iters-1) (applyRules board)
 
 main = do
-    numRowsStr:(numColsStr:(numItersStr:(prob:[]))) <- getArgs
+    numRowsStr:numColsStr:numItersStr:prob:[] <- getArgs
     gen <- getStdGen
     let numIters = read numItersStr :: Int
         numRows = read numRowsStr :: Int
